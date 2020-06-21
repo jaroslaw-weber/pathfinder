@@ -1,4 +1,4 @@
-
+#include <shared_ptr>
 
 class Position
 {
@@ -42,6 +42,7 @@ public:
 
 	bool IsTraversable(Position position)
 	{
+		return true;
 	}
 	/*
 	std::vector<Node> GetNeighbors(*Node node)
@@ -65,4 +66,8 @@ class PathFinder
 		//todo
 		return -1;
 	}
-}
+
+	bool IsClosed(std::shared_ptr<Node> node)
+	{
+	}
+};
