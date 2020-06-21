@@ -30,3 +30,22 @@
 *.exe
 *.out
 *.app
+
+*.DS_Store
+the_game
+
+# conan
+*CMakeCache.txt
+*CMakeFiles*
+*conanbuildinfo*
+*conaninfo*
+*cmake_install*
+*bin
+*Makefile
+
+# vscode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
