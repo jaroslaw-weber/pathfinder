@@ -1,4 +1,6 @@
-#include <shared_ptr>
+
+#include <vector>
+using std::vector;
 
 class Position
 {
@@ -6,7 +8,7 @@ public:
 	int x;
 	int y;
 
-	bool IsEqual(Position otherPosition)
+	bool IsEqual(Position &otherPosition)
 	{
 		return otherPosition.x == x && otherPosition.y == y;
 	}
@@ -25,7 +27,7 @@ public:
 		return distance + eclideanDistance;
 	}
 
-	bool IsEqual(Node node)
+	bool IsEqual(Node &node)
 	{
 		return position.IsEqual(node.position);
 	}
@@ -34,7 +36,7 @@ public:
 class Map
 {
 public:
-	//std::vector<Node> nodes;
+	vector<Node> nodes;
 	unsigned char *grid;
 
 	int width;
@@ -44,11 +46,11 @@ public:
 	{
 		return true;
 	}
-	/*
-	std::vector<Node> GetNeighbors(*Node node)
+
+	vector<Node> GetNeighbors(Node &node)
 	{
+		return vector<Node>();
 	}
-	*/
 };
 
 class PathFinder
@@ -67,7 +69,13 @@ class PathFinder
 		return -1;
 	}
 
-	bool IsClosed(std::shared_ptr<Node> node)
+	bool IsClosed(Node &node)
 	{
+		return true;
 	}
 };
+
+int main()
+{
+	return 0;
+}
