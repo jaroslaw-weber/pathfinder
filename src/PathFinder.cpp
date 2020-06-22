@@ -7,6 +7,7 @@
 using std::cout;
 using std::shared_ptr;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 
 struct Position
@@ -111,8 +112,8 @@ public:
 	void PrintNodes()
 	{
 		std::for_each(nodes.begin(), nodes.end(), [](Node &n) {
-			cout << n.ToString();
 			cout << "\n";
+			cout << n.ToString();
 		});
 	}
 
@@ -128,18 +129,19 @@ public:
 		return arr;
 	}
 
-	Node GetAt(Position position)
+	//todo: using uniqueptr here results in errors.
+	unique_ptr<Node> GetAt(Position position)
 	{
-		/*
-		std::for_each(nodes.begin(), nodes.end(), [&position](Node &n) {
+		unique_ptr<Node> result;
+
+		std::for_each(nodes.begin(), nodes.end(), [&position, &result](Node &n) {
 			if (n.position.IsEqual(position))
 			{
-				return n;
+				//cout << "found";
+				result = unique_ptr<Node>(&n);
 			}
 		});
-        */
-		Node n;
-		return n;
+		return result;
 	}
 };
 
@@ -161,42 +163,47 @@ public:
 
 	void FindPath(Position start, Position end, Map map)
 	{
-		map.Print();
+		map.Print();	  //show map
+		map.PrintNodes(); // show starting valuess
 		vector<Position> opened;
 		opened.push_back(start);
 
 		int maxLoops = 5; //for debugging, delete later;
 		int loopNow = 0;
 
-		Node current = map.GetAt(start);
-		current.distance = 0;
-		current.isStart = true;
+		unique_ptr<Node> current = map.GetAt(start);
+
+		current->distance = 0;
+		current->isStart = true;
 
 		while (loopNow < maxLoops)
 		{
 			loopNow++;
 			current = map.GetAt(start); //todo smallest
 
-			vector<Node> neighbors = map.GetNeighbors(current.position);
+			Position currentPos = Position(); //current->position
+
+			vector<Node> neighbors = map.GetNeighbors(currentPos);
 
 			//check neighbors
-			std::for_each(neighbors.begin(), neighbors.end(), [&opened, &current](Node &neighbor) {
+			std::for_each(neighbors.begin(), neighbors.end(), [&opened, &current, &currentPos](Node &neighbor) {
 				Position neighborPos = neighbor.position;
 				opened.push_back(neighborPos);
 
 				//update path info if new distance is smaller
-				int distance = current.distance + 1;
-				cout << "d:" << distance << "\n";
+				int distance = 999; //current->distance + 1;
+				//cout << "d:" << distance << "\n";
 				if (distance < neighbor.distance)
 				{
 					neighbor.distance = distance;
-					neighbor.previous = current.position;
-					cout << "update: " << neighbor.ToString();
+					neighbor.previous = currentPos;
+					//cout << "update: " << neighbor.ToString();
 				}
+
+				//cout << "neighbor: " << neighbor.ToString();
 			});
 
-			Position currentPos = current.position;
-
+			map.PrintNodes();
 			//remove visited node from opened
 			opened.erase(std::remove_if(
 							 opened.begin(), opened.end(),
@@ -205,8 +212,6 @@ public:
 							 }),
 						 opened.end());
 		}
-
-		map.PrintNodes();
 	}
 
 	bool IsClosed(Node &node)
