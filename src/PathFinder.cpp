@@ -2,12 +2,12 @@
 #include <vector>
 #include <iostream>
 #include <memory>
-#include <format>
+#include <sstream>
 
-using std::vector;
-using std::string;
 using std::cout;
 using std::shared_ptr;
+using std::string;
+using std::vector;
 
 struct Position
 {
@@ -30,6 +30,7 @@ public:
 	Position position;
 	bool canTraverse;
 	Position previous;
+	bool isStart;
 
 	float totalDistance()
 	{
@@ -40,11 +41,16 @@ public:
 	{
 		return position.IsEqual(node.position);
 	}
-    
-    string ToString()
-    {
-        return std::format("x:{},y:{}", position.x,position.y);
-    }
+
+	string ToString()
+	{
+
+		std::stringstream s;
+		s << "x:" << position.x << ",y:" << position.y << ",distance:" << distance;
+		// assign to std::string
+		std::string str = s.str();
+		return str;
+	}
 };
 
 class Map
@@ -106,6 +112,7 @@ public:
 	{
 		std::for_each(nodes.begin(), nodes.end(), [](Node &n) {
 			cout << n.ToString();
+			cout << "\n";
 		});
 	}
 
@@ -113,7 +120,7 @@ public:
 	{
 		vector<Node> arr;
 
-		std::for_each(nodes.begin(), nodes.end(), [](Node &n) {
+		std::for_each(nodes.begin(), nodes.end(), [&arr](Node &n) {
 			//cout << n;
 			arr.push_back(n);
 		});
@@ -123,14 +130,16 @@ public:
 
 	Node GetAt(Position position)
 	{
-		std::for_each(nodes.begin(), nodes.end(), [](Node &n) {
-			if (n.position == position)
+		/*
+		std::for_each(nodes.begin(), nodes.end(), [&position](Node &n) {
+			if (n.position.IsEqual(position))
 			{
 				return n;
 			}
 		});
-        Node n;
-        return n;
+        */
+		Node n;
+		return n;
 	}
 };
 
@@ -139,7 +148,6 @@ class PathFinder
 public:
 	unsigned char *map;
 
-	vector<Position> opened;
 	vector<Position> closed;
 
 	int FindPath(const int nStartX, const int nStartY,
@@ -153,40 +161,52 @@ public:
 
 	void FindPath(Position start, Position end, Map map)
 	{
-		opened.push_back(current.position);
+		map.Print();
+		vector<Position> opened;
+		opened.push_back(start);
 
 		int maxLoops = 5; //for debugging, delete later;
 		int loopNow = 0;
 
+		Node current = map.GetAt(start);
+		current.distance = 0;
+		current.isStart = true;
+
 		while (loopNow < maxLoops)
 		{
 			loopNow++;
-			Node current = map.GetAt(start); //todo smallest
+			current = map.GetAt(start); //todo smallest
 
-			vector<Node> neighbors = map.GetNeighbors(node.position);
+			vector<Node> neighbors = map.GetNeighbors(current.position);
 
 			//check neighbors
-			std::for_each(neighbors.begin(), neighbors.end(), [](Node &neighbor) {
+			std::for_each(neighbors.begin(), neighbors.end(), [&opened, &current](Node &neighbor) {
 				Position neighborPos = neighbor.position;
 				opened.push_back(neighborPos);
 
 				//update path info if new distance is smaller
 				int distance = current.distance + 1;
+				cout << "d:" << distance << "\n";
 				if (distance < neighbor.distance)
 				{
 					neighbor.distance = distance;
 					neighbor.previous = current.position;
+					cout << "update: " << neighbor.ToString();
 				}
 			});
+
+			Position currentPos = current.position;
 
 			//remove visited node from opened
 			opened.erase(std::remove_if(
 							 opened.begin(), opened.end(),
-							 [](const Position &pos) {
-								 return pos.IsEqual(current.position);
+							 [&currentPos](Position &p) {
+								 return p.IsEqual(currentPos);
 							 }),
 						 opened.end());
 		}
+
+		map.PrintNodes();
 	}
 
 	bool IsClosed(Node &node)
