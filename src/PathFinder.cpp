@@ -1,8 +1,11 @@
 
 #include <vector>
 #include <iostream>
-using std::vector;
+#include <memory>
+#include <format>
 
+using std::vector;
+using std::string;
 using std::cout;
 using std::shared_ptr;
 
@@ -37,6 +40,11 @@ public:
 	{
 		return position.IsEqual(node.position);
 	}
+    
+    string ToString()
+    {
+        return std::format("x:{},y:{}", position.x,position.y);
+    }
 };
 
 class Map
@@ -97,7 +105,7 @@ public:
 	void PrintNodes()
 	{
 		std::for_each(nodes.begin(), nodes.end(), [](Node &n) {
-			cout << n;
+			cout << n.ToString();
 		});
 	}
 
@@ -121,8 +129,9 @@ public:
 				return n;
 			}
 		});
+        Node n;
+        return n;
 	}
-	return Position();
 };
 
 class PathFinder
@@ -146,31 +155,38 @@ public:
 	{
 		opened.push_back(current.position);
 
-		Node current = map.GetAt(start); //todo smallest
+		int maxLoops = 5; //for debugging, delete later;
+		int loopNow = 0;
 
-		vector<Node> neighbors = map.GetNeighbors(node.position);
+		while (loopNow < maxLoops)
+		{
+			loopNow++;
+			Node current = map.GetAt(start); //todo smallest
 
-		//check neighbors
-		std::for_each(neighbors.begin(), neighbors.end(), [](Node &neighbor) {
-			Position neighborPos = neighbor.position;
-			opened.push_back(neighborPos);
+			vector<Node> neighbors = map.GetNeighbors(node.position);
 
-			//update path info if new distance is smaller
-			int distance = current.distance + 1;
-			if (distance < neighbor.distance)
-			{
-				neighbor.distance = distance;
-				neighbor.previous = current.position;
-			}
-		});
+			//check neighbors
+			std::for_each(neighbors.begin(), neighbors.end(), [](Node &neighbor) {
+				Position neighborPos = neighbor.position;
+				opened.push_back(neighborPos);
 
-		//remove visited node from opened
-		opened.erase(std::remove_if(
-						 opened.begin(), opened.end(),
-						 [](const Position &pos) {
-							 return pos.IsEqual(current.position);
-						 }),
-					 opened.end());
+				//update path info if new distance is smaller
+				int distance = current.distance + 1;
+				if (distance < neighbor.distance)
+				{
+					neighbor.distance = distance;
+					neighbor.previous = current.position;
+				}
+			});
+
+			//remove visited node from opened
+			opened.erase(std::remove_if(
+							 opened.begin(), opened.end(),
+							 [](const Position &pos) {
+								 return pos.IsEqual(current.position);
+							 }),
+						 opened.end());
+		}
 	}
 
 	bool IsClosed(Node &node)
