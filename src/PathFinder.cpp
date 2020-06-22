@@ -24,6 +24,7 @@ public:
 	int distance;
 	float eclideanDistance;
 	Position position;
+	bool canTraverse;
 
 	float totalDistance()
 	{
@@ -43,7 +44,7 @@ public:
 
 	int width;
 	int height;
-    vector<bool> grid;
+	vector<bool> grid;
 
 	void Constructor(vector<bool> _grid, int _width, int _height)
 	{
@@ -52,28 +53,44 @@ public:
 		grid = _grid;
 
 		nodes = vector<Node>();
-        int gridSize = std::size(_grid);
+		int gridSize = std::size(_grid);
 		for (size_t i = 0; i < gridSize; i++)
 		{
-            //cout << "i"<<i;
+			//cout << "i"<<i;
 			/* code */
-            int x = i/width;
-            int y = i%width;
-            Node n = Node();
-            Position p = Position();
-            p.x = x;
-            p.y = y;
-            n.position = p;
-            nodes.push_back(n);
+			int y = i / width;
+			int x = i % width;
+			Node n = Node();
+			Position p = Position();
+			p.x = x;
+			p.y = y;
+			n.position = p;
+			n.canTraverse = _grid.at(i);
+			nodes.push_back(n);
 		}
 
 		//nodes.push_back(node);
 	}
-    
-    void Print()
-    {
-        
-    }
+
+	void Print()
+	{
+		int count = std::size(nodes);
+		int currentY = 0;
+		for (size_t i = 0; i < count; i++)
+		{
+			Node node = nodes.at(i);
+			int x = node.position.x;
+			int y = node.position.y;
+			bool value = node.canTraverse;
+			if (currentY != y)
+			{
+				cout << "\n";
+				currentY = y;
+			}
+
+			cout << value;
+		}
+	}
 
 	bool IsTraversable(Position position)
 	{
@@ -95,7 +112,7 @@ class PathFinder
 
 	int FindPath(const int nStartX, const int nStartY,
 				 const int nTargetX, const int nTargetY,
-				 const unsigned char* pMap, const int nMapWidth, const int nMapHeight,
+				 const unsigned char *pMap, const int nMapWidth, const int nMapHeight,
 				 int *pOutBuffer, const int nOutBufferSize)
 	{
 		//todo
@@ -110,14 +127,20 @@ class PathFinder
 
 int main()
 {
-    Map m;
-    //const unsigned char cmd1[] = {0x01, 0x00};
+	Map m;
+	//const unsigned char cmd1[] = {0x01, 0x00};
 
-    //const unsigned char* mc2 = cmd1;
-    vector<bool> v;
-    v.push_back(true);
-    v.push_back(true);
-    v.push_back(false);
-    m.Constructor(v, 3,1);
+	//const unsigned char* mc2 = cmd1;
+	vector<bool> v;
+	for (size_t i = 0; i < 5; i++)
+	{
+		v.push_back(true);
+		v.push_back(true);
+		v.push_back(false);
+		v.push_back(false);
+	}
+
+	m.Constructor(v, 5, 4);
+	m.Print();
 	return 0;
 }
