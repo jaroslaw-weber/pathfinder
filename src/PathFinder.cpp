@@ -182,7 +182,11 @@ public:
 				auto neighbor = GetAt(p);
 				if (neighbor.has_value())
 				{
-					arr.push_back(neighbor.value());
+					auto neighborNode = neighbor.value();
+					if (neighborNode->canTraverse)
+					{
+						arr.push_back(neighbor.value());
+					}
 				}
 			}
 		}
@@ -251,7 +255,7 @@ public:
 				return a->GetTotalDistance() < b->GetTotalDistance();
 			});
 
-			auto current = opened.back();
+			auto current = opened.front();
 			auto currentPos = current->position;
 
 			cout << "\ncurrent: " << current->ToString();
