@@ -5,6 +5,9 @@
 #include <sstream>
 
 using std::cout;
+using std::for_each;
+using std::make_shared;
+using std::optional;
 using std::shared_ptr;
 using std::string;
 using std::unique_ptr;
@@ -20,6 +23,15 @@ public:
 	{
 		return otherPosition.x == x && otherPosition.y == y;
 	}
+    
+    string ToString()
+    {
+		std::stringstream s;
+		s << "x:" << x << ", y:" << y;
+		// assign to std::string
+		std::string str = s.str();
+		return str;
+    }
 };
 
 class Node
@@ -47,7 +59,7 @@ public:
 	{
 
 		std::stringstream s;
-		s << "x:" << position.x << ",y:" << position.y << ",distance:" << distance;
+		s << position.ToString() << ",distance:" << distance;
 		// assign to std::string
 		std::string str = s.str();
 		return str;
@@ -57,7 +69,7 @@ public:
 class Map
 {
 public:
-	vector<Node> nodes;
+	vector<shared_ptr<Node>> nodes;
 
 	int width;
 	int height;
@@ -69,7 +81,7 @@ public:
 		height = _height;
 		grid = _grid;
 
-		nodes = vector<Node>();
+		nodes = vector<shared_ptr<Node>>();
 		int gridSize = std::size(_grid);
 		for (size_t i = 0; i < gridSize; i++)
 		{
@@ -77,12 +89,12 @@ public:
 			/* code */
 			int y = i / width;
 			int x = i % width;
-			Node n = Node();
+			auto n = make_shared<Node>();
 			Position p = Position();
 			p.x = x;
 			p.y = y;
-			n.position = p;
-			n.canTraverse = _grid.at(i);
+			n->position = p;
+			n->canTraverse = _grid.at(i);
 			nodes.push_back(n);
 		}
 
@@ -95,10 +107,10 @@ public:
 		int currentY = 0;
 		for (size_t i = 0; i < count; i++)
 		{
-			Node node = nodes.at(i);
-			int x = node.position.x;
-			int y = node.position.y;
-			bool value = node.canTraverse;
+			shared_ptr<Node> node = nodes.at(i);
+			int x = node->position.x;
+			int y = node->position.y;
+			bool value = node->canTraverse;
 			if (currentY != y)
 			{
 				cout << "\n";
@@ -111,34 +123,50 @@ public:
 
 	void PrintNodes()
 	{
-		std::for_each(nodes.begin(), nodes.end(), [](Node &n) {
+		std::for_each(nodes.begin(), nodes.end(), [](shared_ptr<Node> &n) {
 			cout << "\n";
-			cout << n.ToString();
+			cout << n->ToString();
 		});
 	}
 
-	vector<Node> GetNeighbors(Position position)
+	vector<shared_ptr<Node>> GetNeighbors(Position position)
 	{
-		vector<Node> arr;
+        cout << "\nget neighbor: " << position.ToString();
+		vector<shared_ptr<Node>> arr;
 
-		std::for_each(nodes.begin(), nodes.end(), [&arr](Node &n) {
-			//cout << n;
-			arr.push_back(n);
-		});
+		for (int i = position.x; i < position.x + 2; i++)
+		{
+			for (int j = position.y - 1; j < position.y + 2; j++)
+			{
+                
+				Position p;
+				p.x = i;
+				p.y = j;
+                
+                if(p.IsEqual(position))
+                {
+                    continue;
+                }
+				auto neighbor = GetAt(p);
+				if (neighbor.has_value())
+				{
+					arr.push_back(neighbor.value());
+				}
+			}
+		}
 
 		return arr;
 	}
 
-	//todo: using uniqueptr here results in errors.
-	unique_ptr<Node> GetAt(Position position)
+	optional<shared_ptr<Node>> GetAt(Position position)
 	{
-		unique_ptr<Node> result;
+		optional<shared_ptr<Node>> result;
 
-		std::for_each(nodes.begin(), nodes.end(), [&position, &result](Node &n) {
-			if (n.position.IsEqual(position))
+		for_each(nodes.begin(), nodes.end(), [&position, &result](shared_ptr<Node> &n) {
+			if (n->position.IsEqual(position))
 			{
 				//cout << "found";
-				result = unique_ptr<Node>(&n);
+				result = shared_ptr<Node>(n);
 			}
 		});
 		return result;
@@ -150,7 +178,6 @@ class PathFinder
 public:
 	unsigned char *map;
 
-	vector<Position> closed;
 
 	int FindPath(const int nStartX, const int nStartY,
 				 const int nTargetX, const int nTargetY,
@@ -163,40 +190,43 @@ public:
 
 	void FindPath(Position start, Position end, Map map)
 	{
-		map.Print();	  //show map
-		map.PrintNodes(); // show starting valuess
+		map.Print(); //show map
+        
 		vector<Position> opened;
+		vector<Position> closed;
 		opened.push_back(start);
 
 		int maxLoops = 5; //for debugging, delete later;
 		int loopNow = 0;
 
-		unique_ptr<Node> current = map.GetAt(start);
-
+		shared_ptr<Node> current = map.GetAt(start).value();
 		current->distance = 0;
 		current->isStart = true;
 
 		while (loopNow < maxLoops)
 		{
 			loopNow++;
-			current = map.GetAt(start); //todo smallest
+            auto currentPos = opened.back();
+			current = map.GetAt(currentPos).value();
 
-			Position currentPos = Position(); //current->position
 
-			vector<Node> neighbors = map.GetNeighbors(currentPos);
+			vector<shared_ptr<Node>> neighbors = map.GetNeighbors(currentPos);
 
 			//check neighbors
-			std::for_each(neighbors.begin(), neighbors.end(), [&opened, &current, &currentPos](Node &neighbor) {
-				Position neighborPos = neighbor.position;
+			for_each(neighbors.begin(), neighbors.end(), [&opened, &current, &currentPos](shared_ptr<Node> &neighbor) {
+				Position neighborPos = neighbor->position;
+                if(!Contains(closed, neighborPos))
+                {
 				opened.push_back(neighborPos);
+                }
 
 				//update path info if new distance is smaller
-				int distance = 999; //current->distance + 1;
+				int distance = current->distance + 1;
 				//cout << "d:" << distance << "\n";
-				if (distance < neighbor.distance)
+				if (distance < neighbor->distance)
 				{
-					neighbor.distance = distance;
-					neighbor.previous = currentPos;
+					neighbor->distance = distance;
+					neighbor->previous = currentPos;
 					//cout << "update: " << neighbor.ToString();
 				}
 
@@ -205,14 +235,25 @@ public:
 
 			map.PrintNodes();
 			//remove visited node from opened
+            
 			opened.erase(std::remove_if(
 							 opened.begin(), opened.end(),
 							 [&currentPos](Position &p) {
 								 return p.IsEqual(currentPos);
 							 }),
 						 opened.end());
+            //add checked node to "closed" so wont check twice
+            closed.push_back(currentPos);
 		}
 	}
+    
+    bool Contains(vector<Position> &arr, Position &pos)
+    {
+        return std::is_any(arr.begin(), arr.end(), [&pos](Position p){
+            return p.IsEqual(pos);
+        })
+    }
+    
 
 	bool IsClosed(Node &node)
 	{
