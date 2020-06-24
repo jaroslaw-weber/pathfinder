@@ -5,6 +5,11 @@
 		"iterator": "cpp",
 		"memory": "cpp",
 		"random": "cpp",
-		"functional": "cpp"
+		"functional": "cpp",
+		"deque": "cpp",
+		"string": "cpp",
+		"unordered_map": "cpp",
+		"vector": "cpp",
+		"fstream": "cpp"
 	}
 }

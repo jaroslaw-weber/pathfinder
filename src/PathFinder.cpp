@@ -95,7 +95,7 @@ public:
 	{
 
 		std::stringstream s;
-		s << position.ToString() << ",distance:" << distance << ", eeclidean: " << euclideanDistance << ",totalDistance:" << GetTotalDistance();
+		s << position.ToString() << ",distance:" << distance << ", euclidean: " << euclideanDistance << ",totalDistance:" << GetTotalDistance();
 		// assign to std::string
 		std::string str = s.str();
 		return str;
@@ -117,33 +117,146 @@ class PathFinder
 {
 public:
 	//cached info about nodes and distances
-	vector<shared_ptr<Node>> nodes;
+	vector<shared_ptr<Node>> m_nodes;
+
+	Map m_map;
+	Position m_start;
+	Position m_end;
+	vector<shared_ptr<Node>> m_opened;
+	vector<shared_ptr<Node>> m_closed;
 
 	//cached map info
-	unsigned char *map;
+	//unsigned char *map;
 
-	//todo: change to native constructor
-	void Constructor(Map &map)
+	void CreateNodes()
 	{
-
-		nodes = vector<shared_ptr<Node>>();
-		int gridSize = std::size(map.grid);
+		m_nodes = vector<shared_ptr<Node>>();
+		int gridSize = std::size(m_map.grid);
 		for (size_t i = 0; i < gridSize; i++)
 		{
-			//cout << "i"<<i;
-			/* code */
-			int y = i / map.width;
-			int x = i % map.width;
+			int y = i / m_map.width;
+			int x = i % m_map.width;
 			auto n = make_shared<Node>();
 			Position p = Position();
 			p.x = x;
 			p.y = y;
 			n->position = p;
-			n->canTraverse = map.grid.at(i);
-			nodes.push_back(n);
+			n->canTraverse = m_map.grid.at(i);
+			m_nodes.push_back(n);
+		}
+	}
+
+	//find path (function signature as defined in task documentation)
+	int FindPath(const int nStartX, const int nStartY,
+				 const int nTargetX, const int nTargetY,
+				 const unsigned char *pMap, const int nMapWidth, const int nMapHeight,
+				 int *pOutBuffer, const int nOutBufferSize)
+	{
+		//todo
+		return -1;
+	}
+
+	shared_ptr<Node> GetStartNode()
+	{
+		return GetNode(m_start).value();
+	}
+
+	bool IsClosed(shared_ptr<Node> node)
+	{
+		return any_of(m_closed.begin(), m_closed.end(), [&node](shared_ptr<Node> &n) {
+			return n->position.IsEqual(node->position);
+		});
+	}
+
+	//find path (simplified function signature)
+	vector<Position> FindPath(Position start, Position end, Map map)
+	{
+		m_start = start;
+		m_end = end;
+		m_map = map;
+		m_opened = vector<shared_ptr<Node>>;
+		m_closed = vector<shared_ptr<Node>>;
+		CreateNodes();
+
+		shared_ptr<Node> current = GetStartNode();
+		m_opened.push_back(current);
+
+		current->distance = 0;
+		current->isStart = true;
+		current->euclideanDistance = GetEuclideanDistance(start, end);
+
+		while (std::size(m_opened) > 0)
+		{
+			CalculateEuclideanPositions(m_opened, end);
+			SortOpenedByTotalDistance(m_opened);
+
+			auto current = m_opened.front();
+			auto currentPos = current->position;
+
+			bool isEndNode = currentPos.IsEqual(end);
+			if (isEndNode)
+			{
+				//cout << "\nreached goal!";
+				break;
+			}
+
+			vector<shared_ptr<Node>> neighbors = GetNeighbors(currentPos);
+
+			//check neighbors
+			for_each(neighbors.begin(), neighbors.end(), [&opened, &current, &currentPos, &closed](shared_ptr<Node> &neighbor) {
+				AddToOpened(neighbor);
+
+				//update path info if new distance is smaller
+				int distance = current->distance + 1;
+				//cout << "d:" << distance << "\n";
+				if (distance < neighbor->distance)
+				{
+					neighbor->distance = distance;
+					neighbor->previous = currentPos;
+					//cout << "update: " << neighbor.ToString();
+				}
+
+				//cout << "neighbor: " << neighbor.ToString();
+			});
+
+			//remove visited node from opened
+			RemoveFromOpenedNodes(current);
+			//add checked node to "closed" so wont check twice
+			m_closed.push_back(current);
 		}
 
-		//nodes.push_back(node);
+		auto path = GetPath(map, start, end);
+		for_each(path.begin(), path.end(), [this](Position &p) {
+			this->GetNode(p).value()->isSpecial = true;
+		});
+		return path;
+	}
+
+private:
+	void AddToOpened(shared_ptr<Node> node)
+	{
+		if (IsClosed(node))
+			return; // don't add if closed;
+
+		m_opened.push_back(node);
+	}
+	void CalculateEuclideanPositions()
+	{
+		for_each(m_opened.begin(), m_opened.end(), [this](auto n) {
+			// if euclidean distance is not calculated
+			if (n->euclideanDistance < 0)
+			{
+				// then calculate and cache
+				n->euclideanDistance = this->GetEuclideanDistance(n->position, this->m_end);
+			}
+		});
+	}
+
+	void SortOpenedByTotalDistance()
+	{
+		std::sort(m_opened.begin(), m_opened.end(), [](shared_ptr<Node> a, shared_ptr<Node> b) -> bool {
+			return a->GetTotalDistance() < b->GetTotalDistance();
+		});
 	}
 
 	//get nodes next to the position,
@@ -166,7 +279,7 @@ public:
 				{
 					continue;
 				}
-				auto neighbor = GetAt(p);
+				auto neighbor = GetNode(p);
 				if (neighbor.has_value())
 				{
 					auto neighborNode = neighbor.value();
@@ -183,7 +296,7 @@ public:
 	}
 
 	//get node at this position
-	optional<shared_ptr<Node>> GetAt(Position position)
+	optional<shared_ptr<Node>> GetNode(Position position)
 	{
 		optional<shared_ptr<Node>> result;
 
@@ -197,103 +310,15 @@ public:
 		return result;
 	}
 
-	int FindPath(const int nStartX, const int nStartY,
-				 const int nTargetX, const int nTargetY,
-				 const unsigned char *pMap, const int nMapWidth, const int nMapHeight,
-				 int *pOutBuffer, const int nOutBufferSize)
-	{
-		//todo
-		return -1;
-	}
-
-	vector<Position> FindPath(Position start, Position end, Map map)
+	void RemoveFromOpenedNodes(shared_ptr<Node> node)
 	{
 
-		vector<shared_ptr<Node>> opened;
-		vector<shared_ptr<Node>> closed;
-
-		int maxLoops = 5; //for debugging, delete later;
-		int loopNow = 0;
-
-		shared_ptr<Node> current = GetAt(start).value();
-		opened.push_back(current);
-		current->distance = 0;
-		current->isStart = true;
-		current->euclideanDistance = GetEuclideanDistance(start, end);
-
-		while (std::size(opened) > 0)
-		{
-			loopNow++;
-			for_each(opened.begin(), opened.end(), [this, &end](auto n) {
-				// if euclidean distance is not calculated
-				if (n->euclideanDistance < 0)
-				{
-					// then calculate and cache
-					n->euclideanDistance = this->GetEuclideanDistance(n->position, end);
-				}
-			});
-			//sort by distance
-			std::sort(opened.begin(), opened.end(), [](shared_ptr<Node> a, shared_ptr<Node> b) -> bool {
-				return a->GetTotalDistance() < b->GetTotalDistance();
-			});
-
-			auto current = opened.front();
-			auto currentPos = current->position;
-
-			cout << "\ncurrent: " << current->ToString();
-
-			if (currentPos.IsEqual(end))
-			{
-				cout << "\nreached goal!";
-				break;
-			}
-
-			vector<shared_ptr<Node>> neighbors = GetNeighbors(currentPos);
-
-			//check neighbors
-			for_each(neighbors.begin(), neighbors.end(), [&opened, &current, &currentPos, &closed](shared_ptr<Node> &neighbor) {
-				Position neighborPos = neighbor->position;
-
-				//check if already closed neighbor
-				bool isClosed = any_of(closed.begin(), closed.end(), [&neighborPos](shared_ptr<Node> &n) {
-					return n->position.IsEqual(neighborPos);
-				});
-				if (!isClosed)
-				{
-					opened.push_back(neighbor);
-				}
-
-				//update path info if new distance is smaller
-				int distance = current->distance + 1;
-				//cout << "d:" << distance << "\n";
-				if (distance < neighbor->distance)
-				{
-					neighbor->distance = distance;
-					neighbor->previous = currentPos;
-					//cout << "update: " << neighbor.ToString();
-				}
-
-				//cout << "neighbor: " << neighbor.ToString();
-			});
-
-			//map.PrintNodes();
-			//remove visited node from opened
-
-			opened.erase(std::remove_if(
-							 opened.begin(), opened.end(),
-							 [&currentPos](shared_ptr<Node> &neighb) {
-								 return neighb->position.IsEqual(currentPos);
-							 }),
-						 opened.end());
-			//add checked node to "closed" so wont check twice
-			closed.push_back(current);
-		}
-
-		auto path = GetPath(map, start, end);
-		for_each(path.begin(), path.end(), [this](Position &p) {
-			this->GetAt(p).value()->isSpecial = true;
-		});
-		return path;
+		m_opened.erase(std::remove_if(
+						   m_opened.begin(), m_opened.end(),
+						   [&node](shared_ptr<Node> &n) {
+							   return n->position.IsEqual(node->position);
+						   }),
+					   m_opened.end());
 	}
 
 	float GetEuclideanDistance(Position a, Position b)
@@ -309,7 +334,7 @@ public:
 		//cout << "\npath:";
 		int x = 0;
 
-		auto current = GetAt(end).value();
+		auto current = GetNode(end).value();
 		while (x < 100) //todo
 		{
 
@@ -324,7 +349,7 @@ public:
 			{
 				break;
 			}
-			current = GetAt(prevPos).value();
+			current = GetNode(prevPos).value();
 		}
 		return path;
 	}
@@ -388,7 +413,6 @@ int main()
 	m.width = 39;
 	m.height = 10;
 	PathFinder pf;
-	pf.Constructor(m);
 	Position p1;
 	Position p2;
 	p2.x = 22;
