@@ -69,7 +69,7 @@ public:
 	{
 		if (isSpecial)
 		{
-			return "#";
+			return "p";
 		}
 		else if (canTraverse)
 		{
@@ -139,7 +139,7 @@ public:
 			p.x = x;
 			p.y = y;
 			n->position = p;
-			n->canTraverse = grid.at(i);
+			n->canTraverse = map.grid.at(i);
 			nodes.push_back(n);
 		}
 
@@ -208,7 +208,6 @@ public:
 
 	vector<Position> FindPath(Position start, Position end, Map map)
 	{
-		Print(); //show map
 
 		vector<shared_ptr<Node>> opened;
 		vector<shared_ptr<Node>> closed;
@@ -216,7 +215,7 @@ public:
 		int maxLoops = 5; //for debugging, delete later;
 		int loopNow = 0;
 
-		shared_ptr<Node> current = map.GetAt(start).value();
+		shared_ptr<Node> current = GetAt(start).value();
 		opened.push_back(current);
 		current->distance = 0;
 		current->isStart = true;
@@ -226,11 +225,11 @@ public:
 		{
 			loopNow++;
 			for_each(opened.begin(), opened.end(), [this, &end](auto n) {
-				// if eclidean distance is not calculated
-				if (n->eclideanDistance < 0)
+				// if euclidean distance is not calculated
+				if (n->euclideanDistance < 0)
 				{
 					// then calculate and cache
-					n->eclideanDistance = this->GetEuclideanDistance(n->position, end);
+					n->euclideanDistance = this->GetEuclideanDistance(n->position, end);
 				}
 			});
 			//sort by distance
@@ -249,7 +248,7 @@ public:
 				break;
 			}
 
-			vector<shared_ptr<Node>> neighbors = map.GetNeighbors(currentPos);
+			vector<shared_ptr<Node>> neighbors = GetNeighbors(currentPos);
 
 			//check neighbors
 			for_each(neighbors.begin(), neighbors.end(), [&opened, &current, &currentPos, &closed](shared_ptr<Node> &neighbor) {
@@ -291,8 +290,8 @@ public:
 		}
 
 		auto path = GetPath(map, start, end);
-		for_each(path.begin(), path.end(), [&map](Position &p) {
-			map.GetAt(p).value()->isSpecial = true;
+		for_each(path.begin(), path.end(), [this](Position &p) {
+			this->GetAt(p).value()->isSpecial = true;
 		});
 		return path;
 	}
@@ -310,7 +309,7 @@ public:
 		//cout << "\npath:";
 		int x = 0;
 
-		auto current = map.GetAt(end).value();
+		auto current = GetAt(end).value();
 		while (x < 100) //todo
 		{
 
@@ -325,7 +324,7 @@ public:
 			{
 				break;
 			}
-			current = map.GetAt(prevPos).value();
+			current = GetAt(prevPos).value();
 		}
 		return path;
 	}
@@ -385,13 +384,20 @@ int main()
 		v.push_back(true);
 	}
 
-	m.Constructor(v, 39, 10);
+	m.grid = v;
+	m.width = 39;
+	m.height = 10;
 	PathFinder pf;
+	pf.Constructor(m);
 	Position p1;
 	Position p2;
 	p2.x = 22;
 	p2.y = 7;
 
-	pf.FindPath(p1, p2, m);
+	auto path = pf.FindPath(p1, p2, m);
+	PathPrinter pp;
+	pp.nodes = pf.nodes;
+	pp.Print();
+
 	return 0;
 }
