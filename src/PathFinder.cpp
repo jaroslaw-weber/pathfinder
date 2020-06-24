@@ -23,15 +23,15 @@ public:
 	{
 		return otherPosition.x == x && otherPosition.y == y;
 	}
-    
-    string ToString()
-    {
+
+	string ToString()
+	{
 		std::stringstream s;
 		s << "x:" << x << ", y:" << y;
 		// assign to std::string
 		std::string str = s.str();
 		return str;
-    }
+	}
 };
 
 class Node
@@ -131,22 +131,22 @@ public:
 
 	vector<shared_ptr<Node>> GetNeighbors(Position position)
 	{
-        cout << "\nget neighbor: " << position.ToString();
+		//cout << "\nget neighbor: " << position.ToString();
 		vector<shared_ptr<Node>> arr;
 
 		for (int i = position.x; i < position.x + 2; i++)
 		{
 			for (int j = position.y - 1; j < position.y + 2; j++)
 			{
-                
+
 				Position p;
 				p.x = i;
 				p.y = j;
-                
-                if(p.IsEqual(position))
-                {
-                    continue;
-                }
+
+				if (p.IsEqual(position))
+				{
+					continue;
+				}
 				auto neighbor = GetAt(p);
 				if (neighbor.has_value())
 				{
@@ -178,7 +178,6 @@ class PathFinder
 public:
 	unsigned char *map;
 
-
 	int FindPath(const int nStartX, const int nStartY,
 				 const int nTargetX, const int nTargetY,
 				 const unsigned char *pMap, const int nMapWidth, const int nMapHeight,
@@ -188,37 +187,59 @@ public:
 		return -1;
 	}
 
+	bool SortByDistance(shared_ptr<Node> a, shared_ptr<Node> b)
+	{
+		return a->distance < b->distance;
+	}
+
 	void FindPath(Position start, Position end, Map map)
 	{
 		map.Print(); //show map
-        
-		vector<Position> opened;
-		vector<Position> closed;
-		opened.push_back(start);
+
+		vector<shared_ptr<Node>> opened;
+		vector<shared_ptr<Node>> closed;
 
 		int maxLoops = 5; //for debugging, delete later;
 		int loopNow = 0;
 
 		shared_ptr<Node> current = map.GetAt(start).value();
+		opened.push_back(current);
 		current->distance = 0;
 		current->isStart = true;
 
-		while (loopNow < maxLoops)
+		while (std::size(opened) > 0)
 		{
 			loopNow++;
-            auto currentPos = opened.back();
-			current = map.GetAt(currentPos).value();
+			//sort by distance
+			std::sort(opened.begin(), opened.end(), [](shared_ptr<Node> a, shared_ptr<Node> b) -> bool {
+				return a->distance < b->distance;
+			});
 
+			auto current = opened.back();
+			auto currentPos = current->position;
+
+			cout << "\ncurrent: " << current->ToString();
+
+			if (currentPos.IsEqual(end))
+			{
+				cout << "\nreached goal!";
+				break;
+			}
 
 			vector<shared_ptr<Node>> neighbors = map.GetNeighbors(currentPos);
 
 			//check neighbors
-			for_each(neighbors.begin(), neighbors.end(), [&opened, &current, &currentPos](shared_ptr<Node> &neighbor) {
+			for_each(neighbors.begin(), neighbors.end(), [&opened, &current, &currentPos, &closed](shared_ptr<Node> &neighbor) {
 				Position neighborPos = neighbor->position;
-                if(!Contains(closed, neighborPos))
-                {
-				opened.push_back(neighborPos);
-                }
+
+				//check if already closed neighbor
+				bool isClosed = std::any_of(closed.begin(), closed.end(), [&neighborPos](shared_ptr<Node> &n) {
+					return n->position.IsEqual(neighborPos);
+				});
+				if (!isClosed)
+				{
+					opened.push_back(neighbor);
+				}
 
 				//update path info if new distance is smaller
 				int distance = current->distance + 1;
@@ -233,27 +254,48 @@ public:
 				//cout << "neighbor: " << neighbor.ToString();
 			});
 
-			map.PrintNodes();
+			//map.PrintNodes();
 			//remove visited node from opened
-            
+
 			opened.erase(std::remove_if(
 							 opened.begin(), opened.end(),
-							 [&currentPos](Position &p) {
-								 return p.IsEqual(currentPos);
+							 [&currentPos](shared_ptr<Node> &neighb) {
+								 return neighb->position.IsEqual(currentPos);
 							 }),
 						 opened.end());
-            //add checked node to "closed" so wont check twice
-            closed.push_back(currentPos);
+			//add checked node to "closed" so wont check twice
+			closed.push_back(current);
 		}
+
+		PrintPath(map, start, end);
+
+		cout << "\nend path";
+
+		//map.PrintNodes();
 	}
-    
-    bool Contains(vector<Position> &arr, Position &pos)
-    {
-        return std::is_any(arr.begin(), arr.end(), [&pos](Position p){
-            return p.IsEqual(pos);
-        })
-    }
-    
+
+	void PrintPath(Map &map, Position start, Position end)
+	{
+		cout << "\npath:";
+		int x = 0;
+
+		auto current = map.GetAt(end).value();
+		while (x < 50)
+		{
+			x++;
+			cout << "\n"
+				 << current->position.ToString();
+			Position prevPos = current->previous;
+			//cout << "\n prev pos:" << prevPos.ToString();
+
+			if (current->position.IsEqual(start))
+			{
+				break;
+			}
+			current = map.GetAt(prevPos).value();
+		}
+		cout << "\n path end";
+	}
 
 	bool IsClosed(Node &node)
 	{
@@ -272,7 +314,7 @@ int main()
 	{
 		v.push_back(true);
 		v.push_back(true);
-		v.push_back(true);
+		v.push_back(false);
 		v.push_back(true);
 	}
 
@@ -280,8 +322,8 @@ int main()
 	PathFinder pf;
 	Position p1;
 	Position p2;
-	p2.x = 3;
-	p2.y = 3;
+	p2.x = 4;
+	p2.y = 1;
 
 	pf.FindPath(p1, p2, m);
 	return 0;
