@@ -153,7 +153,24 @@ public:
 				 int *pOutBuffer, const int nOutBufferSize)
 	{
 		//todo
-		return -1;
+		Position start;
+		start.x = nStartX;
+		start.y = nStartY;
+		Position end;
+		end.x = nTargetX;
+		end.y = nTargetY;
+		Map m;
+		m.width = nMapWidth;
+		m.height = nMapHeight;
+		auto grid = vector<bool>();
+		int mapSize = m.width * m.height;
+		for (int i = 0; i < mapSize; ++i) // ---- working
+		{
+			bool current = pMap[i] == 1;
+			grid.push_back(current);
+		}
+		FindPath(start, end, m);
+		return 0;
 	}
 
 	shared_ptr<Node> GetStartNode()
@@ -174,8 +191,8 @@ public:
 		m_start = start;
 		m_end = end;
 		m_map = map;
-		m_opened = vector<shared_ptr<Node>>;
-		m_closed = vector<shared_ptr<Node>>;
+		m_opened = vector<shared_ptr<Node>>();
+		m_closed = vector<shared_ptr<Node>>();
 		CreateNodes();
 
 		shared_ptr<Node> current = GetStartNode();
@@ -187,8 +204,8 @@ public:
 
 		while (std::size(m_opened) > 0)
 		{
-			CalculateEuclideanPositions(m_opened, end);
-			SortOpenedByTotalDistance(m_opened);
+			CalculateEuclideanPositions();
+			SortOpenedByTotalDistance();
 
 			auto current = m_opened.front();
 			auto currentPos = current->position;
@@ -203,8 +220,8 @@ public:
 			vector<shared_ptr<Node>> neighbors = GetNeighbors(currentPos);
 
 			//check neighbors
-			for_each(neighbors.begin(), neighbors.end(), [&opened, &current, &currentPos, &closed](shared_ptr<Node> &neighbor) {
-				AddToOpened(neighbor);
+			for_each(neighbors.begin(), neighbors.end(), [this, &current, &currentPos](shared_ptr<Node> &neighbor) {
+				this->AddToOpened(neighbor);
 
 				//update path info if new distance is smaller
 				int distance = current->distance + 1;
@@ -300,7 +317,7 @@ private:
 	{
 		optional<shared_ptr<Node>> result;
 
-		for_each(nodes.begin(), nodes.end(), [&position, &result](shared_ptr<Node> &n) {
+		for_each(m_nodes.begin(), m_nodes.end(), [&position, &result](shared_ptr<Node> &n) {
 			if (n->position.IsEqual(position))
 			{
 				//cout << "found";
@@ -392,8 +409,17 @@ public:
 	}
 };
 
-int main()
+void exampleTest()
 {
+	unsigned char pMap[] = {1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1};
+	int pOutBuffer[12];
+	PathFinder pf;
+	pf.FindPath(0, 0, 1, 2, pMap, 4, 3, pOutBuffer, 12);
+};
+
+void myTest()
+{
+
 	Map m;
 	//const unsigned char cmd1[] = {0x01, 0x00};
 
@@ -420,8 +446,13 @@ int main()
 
 	auto path = pf.FindPath(p1, p2, m);
 	PathPrinter pp;
-	pp.nodes = pf.nodes;
+	pp.nodes = pf.m_nodes;
 	pp.Print();
+};
 
+int main()
+{
+	myTest();
+	exampleTest();
 	return 0;
-}
+};
