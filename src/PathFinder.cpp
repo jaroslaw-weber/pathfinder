@@ -1,3 +1,5 @@
+//author: Jaroslaw Weber
+//email: jaroslawweber@gmail.com
 #include <vector>
 #include <iostream>
 #include <memory>
@@ -273,10 +275,10 @@ public:
 		}
 		m.grid = grid;
 
-		optional<vector<shared_ptr<Node>>> pathOptional = FindPath(start, end, m);
+		optional<vector<Position>> pathOptional = FindPath(start, end, m);
 
 		//if path is found
-		if (pathOptional.hasValue())
+		if (pathOptional.has_value())
 		{
 			auto path = pathOptional.value();
 			//how many steps
@@ -393,7 +395,7 @@ public:
 			auto path = GetPath(map, start, end);
 			//prepare for printing
 			for_each(path.begin(), path.end(), [this](Position &p) {
-				this->GetNode(p).value()->isPartOfPath = true;
+				this->GetNode(p).value()->isPartOfThePath = true;
 			});
 			//print path
 			cout << "\npath:";
@@ -405,7 +407,7 @@ public:
 		{
 
 			cout << "path not found!";
-			return optional<vector<shared_ptr<Node>>>(); //if failed return empty optional
+			return optional<vector<Position>>(); //if failed return empty optional
 		}
 	}
 
