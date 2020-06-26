@@ -280,6 +280,7 @@ public:
 	//find path (simplified function signature)
 	vector<Position> FindPath(Position start, Position end, Map map)
 	{
+		bool success = false;
 
 		m_start = start;
 		m_end = end;
@@ -313,6 +314,7 @@ public:
 			bool isEndNode = currentPos.IsEqual(end);
 			if (isEndNode)
 			{
+				success = true;
 				//cout << "\nreached goal!";
 				break;
 			}
@@ -340,6 +342,13 @@ public:
 			RemoveFromOpenedNodes(current);
 			//add checked node to "closed" so wont check twice
 			m_closed.push_back(current);
+		}
+
+		if (!success)
+		{
+			cout << "path not found!";
+			return vector<Position>(); //if failed return empty vector;
+									   //todo use optional
 		}
 
 		auto path = GetPath(map, start, end);
@@ -498,6 +507,16 @@ void exampleTest()
 	assert(pOutBuffer[1] == 5);
 	assert(pOutBuffer[2] == 9);
 };
+void exampleTest2()
+{
+	cout << "\n===example2===\n";
+	unsigned char pMap[] = {0, 0, 1, 0, 1, 1, 1, 0, 1};
+	PathFinder pf;
+	int pOutBuffer[7];
+	int steps = pf.FindPath(2, 0, 0, 2, pMap, 3, 3, pOutBuffer, 7);
+	//testing if result is correct
+	assert(steps == -1);
+};
 
 void myTest()
 {
@@ -533,5 +552,6 @@ int main()
 {
 	myTest();
 	exampleTest();
+	exampleTest2();
 	return 0;
 };
