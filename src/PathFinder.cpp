@@ -1,4 +1,3 @@
-
 #include <vector>
 #include <iostream>
 #include <memory>
@@ -17,6 +16,25 @@ using std::string;
 using std::unique_ptr;
 using std::vector;
 
+/*
+
+about this algorithm:
+
+I am using A* algorithm for finding path.
+I have used it because it is simple enough to reason about it and have good performance.
+First I convert input to simpler data structures such as Position, Map, Node.
+I do it to make it more readable.
+Then I use this data to calculate path.
+Before I calculate path, I print map in console, as 2d grid of symbols.
+It is for the purpose of debugging. I recomment checking out comments on PathPrinter.
+After path is calculated, I print map with PathPrinter again, this time showing path.
+
+There are still some things to improve but algorithm seems to work correctly.
+With some more time I would add more test cases and more automated testing.
+
+*/
+
+//printing int array to console
 void PrintIntArray(int *arr, int arrSize)
 {
 	for (int i = 0; i < arrSize; i++)
@@ -47,6 +65,8 @@ public:
 	}
 };
 
+//converting positions to indexes in a array
+//use this for representing path as int array (as in api specification)
 vector<int> PositionsToIntVector(vector<Position> positions, int width)
 {
 	auto result = vector<int>();
@@ -58,7 +78,7 @@ vector<int> PositionsToIntVector(vector<Position> positions, int width)
 }
 
 //path node
-//containing some information which is used in when finding path
+//containing some information about path
 class Node
 {
 public:
@@ -81,13 +101,13 @@ public:
 	bool isStart;
 	//is it part of the shortest path?
 	//after path calculated, set this to "true"
-	bool isSpecial;
+	bool isPartOfThePath;
 
 	//get letter representing node
 	//using for displaying path in console
 	string ToLetter()
 	{
-		if (isSpecial)
+		if (isPartOfThePath)
 		{
 			return "p";
 		}
@@ -100,6 +120,7 @@ public:
 	}
 
 	//A* total distance calculation
+	//the smaller it is the better choice it is for next step
 	float GetTotalDistance()
 	{
 		return distance + euclideanDistance;
@@ -129,36 +150,42 @@ public:
 	int width;
 	int height;
 
+	//map as one dimensional grid
+	//true means that the position is traverable
+	//the grid is given in row-major order,
+	//each row is given in order of increasing 𝑥-coordinate,
+	//and the rows are given in order of increasing 𝑦-coordinate
 	vector<bool> grid;
 };
 
+//printing path
 class PathPrinter
 {
 public:
 	vector<shared_ptr<Node>> nodes;
 	/*
-printing nodes.
+	printing nodes.
 
-it will look like this:
-__________
-....
-X.X.
-X...
-__________
+	it will look like this:
+	__________
+	....
+	X.X.
+	X...
+	__________
 
-it can also print path like this:
+	it can also print path like this:
 
-__________
-p...
-XpX.
-Xp..
-__________
+	__________
+	p...
+	XpX.
+	Xp..
+	__________
 
-symbols:
-X -> cannot traverse
-. -> can traverse 
-p -> path
-*/
+	symbols:
+	X -> cannot traverse
+	. -> can traverse 
+	p -> path
+	*/
 	void Print()
 	{
 		cout << "\n__________\n";
@@ -203,6 +230,7 @@ public:
 	//cached map info
 	//unsigned char *map;
 
+	//convert Map to vector of Nodes
 	void CreateNodes()
 	{
 		m_nodes = vector<shared_ptr<Node>>();
@@ -221,13 +249,12 @@ public:
 		}
 	}
 
-	//find path (function signature as defined in task documentation)
+	//find path (function signature as defined in api documentation)
 	int FindPath(const int nStartX, const int nStartY,
 				 const int nTargetX, const int nTargetY,
 				 const unsigned char *pMap, const int nMapWidth, const int nMapHeight,
 				 int *pOutBuffer, const int nOutBufferSize)
 	{
-		//todo
 		Position start;
 		start.x = nStartX;
 		start.y = nStartY;
@@ -239,37 +266,54 @@ public:
 		m.height = nMapHeight;
 		auto grid = vector<bool>();
 		int mapSize = m.width * m.height;
-		for (int i = 0; i < mapSize; ++i) // ---- working
+		for (int i = 0; i < mapSize; ++i)
 		{
 			bool current = pMap[i] == 1;
 			grid.push_back(current);
 		}
 		m.grid = grid;
-		auto path = FindPath(start, end, m);
-		//how many steps
-		int pathSize = std::size(path);
-		int stepCount = pathSize - 1;
 
-		if (stepCount > 0)
+		optional<vector<shared_ptr<Node>>> pathOptional = FindPath(start, end, m);
+
+		//if path is found
+		if (pathOptional.hasValue())
 		{
-			auto intPath = PositionsToIntVector(path, m.width);
-			intPath.erase(intPath.begin());
+			auto path = pathOptional.value();
+			//how many steps
+			int pathSize = std::size(path);
+			int stepCount = pathSize - 1;
 
-			for (int i = 0; i < stepCount; i++)
+			//if there is path available
+			if (stepCount > 0)
 			{
-				pOutBuffer[i] = intPath.at(i);
+				//convert path from 2d coordinates to 1d array
+				auto intPath = PositionsToIntVector(path, m.width);
+				intPath.erase(intPath.begin());
+
+				for (int i = 0; i < stepCount; i++)
+				{
+					pOutBuffer[i] = intPath.at(i);
+				}
+				//printing for debug
+				cout << "\npath as int array:\n";
+				PrintIntArray(pOutBuffer, nOutBufferSize);
 			}
-			cout << "\npath as int array:\n";
-			PrintIntArray(pOutBuffer, nOutBufferSize);
+			return stepCount;
 		}
-		return stepCount;
+		//if path is not found
+		else
+		{
+			return -1;
+		}
 	}
 
+	//get first node
 	shared_ptr<Node> GetStartNode()
 	{
 		return GetNode(m_start).value();
 	}
 
+	//check if already visited the node
 	bool IsClosed(shared_ptr<Node> node)
 	{
 		return any_of(m_closed.begin(), m_closed.end(), [&node](shared_ptr<Node> &n) {
@@ -278,10 +322,10 @@ public:
 	}
 
 	//find path (simplified function signature)
-	vector<Position> FindPath(Position start, Position end, Map map)
+	optional<vector<Position>> FindPath(Position start, Position end, Map map)
 	{
+		//initialize
 		bool success = false;
-
 		m_start = start;
 		m_end = end;
 		m_map = map;
@@ -305,17 +349,19 @@ public:
 
 		while (std::size(m_opened) > 0)
 		{
+			//update some data after each loop
 			CalculateEuclideanPositions();
 			SortOpenedByTotalDistance();
 
+			//get node with smallest "total distance"
 			auto current = m_opened.front();
 			auto currentPos = current->position;
 
+			//check if reached the goal
 			bool isEndNode = currentPos.IsEqual(end);
 			if (isEndNode)
 			{
 				success = true;
-				//cout << "\nreached goal!";
 				break;
 			}
 
@@ -327,15 +373,11 @@ public:
 
 				//update path info if new distance is smaller
 				int distance = current->distance + 1;
-				//cout << "d:" << distance << "\n";
 				if (distance < neighbor->distance)
 				{
 					neighbor->distance = distance;
 					neighbor->previous = currentPos;
-					//cout << "update: " << neighbor.ToString();
 				}
-
-				//cout << "neighbor: " << neighbor.ToString();
 			});
 
 			//remove visited node from opened
@@ -344,23 +386,31 @@ public:
 			m_closed.push_back(current);
 		}
 
-		if (!success)
+		//if found path
+		if (success)
 		{
-			cout << "path not found!";
-			return vector<Position>(); //if failed return empty vector;
-									   //todo use optional
+			//get path as vector of positions
+			auto path = GetPath(map, start, end);
+			//prepare for printing
+			for_each(path.begin(), path.end(), [this](Position &p) {
+				this->GetNode(p).value()->isPartOfPath = true;
+			});
+			//print path
+			cout << "\npath:";
+			pp.Print();
+			//return result
+			return path;
 		}
+		else
+		{
 
-		auto path = GetPath(map, start, end);
-		for_each(path.begin(), path.end(), [this](Position &p) {
-			this->GetNode(p).value()->isSpecial = true;
-		});
-		cout << "\npath:";
-		pp.Print();
-		return path;
+			cout << "path not found!";
+			return optional<vector<shared_ptr<Node>>>(); //if failed return empty optional
+		}
 	}
 
 private:
+	//add to queue of nodes to check next
 	void AddToOpened(shared_ptr<Node> node)
 	{
 		if (IsClosed(node))
@@ -368,6 +418,8 @@ private:
 
 		m_opened.push_back(node);
 	}
+
+	//calculate how far from target (end) are nodes
 	void CalculateEuclideanPositions()
 	{
 		for_each(m_opened.begin(), m_opened.end(), [this](auto n) {
@@ -380,6 +432,7 @@ private:
 		});
 	}
 
+	//sort for the purpose of making decision which node check next
 	void SortOpenedByTotalDistance()
 	{
 		std::sort(m_opened.begin(), m_opened.end(), [](shared_ptr<Node> a, shared_ptr<Node> b) -> bool {
@@ -389,15 +442,16 @@ private:
 
 	//get nodes next to the position,
 	//which can be traversed
+	//reminder: cannot traverse diagnostically, only horizontal or vertical
 	vector<shared_ptr<Node>> GetNeighbors(Position position)
 	{
 		//cout << "\nget neighbor: " << position.ToString();
 		vector<shared_ptr<Node>> arr;
 
-		Position p1;
-		Position p2;
-		Position p3;
-		Position p4;
+		Position p1; //left
+		Position p2; //right
+		Position p3; //up
+		Position p4; //down
 		p1.x = position.x - 1;
 		p2.x = position.x + 1;
 		p1.y = position.y;
@@ -412,8 +466,11 @@ private:
 		positions.push_back(p3);
 		positions.push_back(p4);
 
+		//check if those positions are available
+		//if so, add them to result array
 		for_each(positions.begin(), positions.end(), [this, &arr](Position &p) {
 			auto neighbor = this->GetNode(p);
+			//if out of range then discard
 			if (neighbor.has_value())
 			{
 				auto neighborNode = neighbor.value();
@@ -436,16 +493,15 @@ private:
 		for_each(m_nodes.begin(), m_nodes.end(), [&position, &result](shared_ptr<Node> &n) {
 			if (n->position.IsEqual(position))
 			{
-				//cout << "found";
 				result = shared_ptr<Node>(n);
 			}
 		});
 		return result;
 	}
 
+	//remove from checking queue
 	void RemoveFromOpenedNodes(shared_ptr<Node> node)
 	{
-
 		m_opened.erase(std::remove_if(
 						   m_opened.begin(), m_opened.end(),
 						   [&node](shared_ptr<Node> &n) {
@@ -454,6 +510,7 @@ private:
 					   m_opened.end());
 	}
 
+	//get euclidean distance between 2 points on 2d grid
 	float GetEuclideanDistance(Position a, Position b)
 	{
 
@@ -461,39 +518,39 @@ private:
 					pow(b.y - a.y, 2) * 1.0);
 	}
 
+	//after calculating all distances and finding a path,
+	//create a vector of steps of that path
 	vector<Position> GetPath(Map &map, Position start, Position end)
 	{
 		auto path = vector<Position>();
-		//cout << "\npath:";
 		int x = 0;
 
+		//start from end node and get steps in reverse
 		auto current = GetNode(end).value();
-		while (x < 100) //todo
+		while (true)
 		{
 
 			path.push_back(current->position);
 
 			x++;
-			//cout << "\n"<< current -> position.ToString();
+			//get previous step
 			Position prevPos = current->previous;
-			//cout << "\n prev pos:" << prevPos.ToString();
 
+			//if reached start position then leave the loop
 			if (current->position.IsEqual(start))
 			{
 				break;
 			}
 			current = GetNode(prevPos).value();
 		}
+		//because steps are in reverse we need to reverse the vector
 		std::reverse(path.begin(), path.end());
 		return path;
 	}
-
-	bool IsClosed(Node &node)
-	{
-		return true;
-	}
 };
 
+//test if algorithm is working properly
+//using data provided in documentation
 void exampleTest()
 {
 	cout << "\n===example1===\n";
@@ -507,6 +564,9 @@ void exampleTest()
 	assert(pOutBuffer[1] == 5);
 	assert(pOutBuffer[2] == 9);
 };
+
+//test if algorithm is working properly
+//using data provided in documentation
 void exampleTest2()
 {
 	cout << "\n===example2===\n";
@@ -518,13 +578,12 @@ void exampleTest2()
 	assert(steps == -1);
 };
 
+//test if algorithm is working properly
+//using custom data (big grid)
 void myTest()
 {
 	cout << "=== custom test ===";
 	Map m;
-	//const unsigned char cmd1[] = {0x01, 0x00};
-
-	//const unsigned char* mc2 = cmd1;
 	vector<bool> v;
 	for (size_t i = 0; i < 65; i++)
 	{
@@ -548,10 +607,16 @@ void myTest()
 	auto path = pf.FindPath(p1, p2, m);
 };
 
-int main()
+//run all tests
+void runTests()
 {
 	myTest();
 	exampleTest();
 	exampleTest2();
+}
+
+int main()
+{
+	runTests();
 	return 0;
 };
