@@ -5,6 +5,8 @@
 #include <sstream>
 #include <math.h>
 
+#include <cassert>
+
 using std::any_of;
 using std::cout;
 using std::for_each;
@@ -14,6 +16,14 @@ using std::shared_ptr;
 using std::string;
 using std::unique_ptr;
 using std::vector;
+
+void PrintIntArray(int *arr, int arrSize)
+{
+	for (int i = 0; i < arrSize; i++)
+	{
+		cout << arr[i] << ",";
+	}
+}
 
 //point on a 2d grid
 struct Position
@@ -36,6 +46,16 @@ public:
 		return s.str();
 	}
 };
+
+vector<int> PositionsToIntVector(vector<Position> positions, int width)
+{
+	auto result = vector<int>();
+	for_each(positions.begin(), positions.end(), [&result, &width](Position &p) {
+		int index = p.y * width + p.x;
+		result.push_back(index);
+	});
+	return result;
+}
 
 //path node
 //containing some information which is used in when finding path
@@ -227,7 +247,21 @@ public:
 		m.grid = grid;
 		auto path = FindPath(start, end, m);
 		//how many steps
-		int stepCount = std::size(path) - 1;
+		int pathSize = std::size(path);
+		int stepCount = pathSize - 1;
+
+		if (stepCount > 0)
+		{
+			auto intPath = PositionsToIntVector(path, m.width);
+			intPath.erase(intPath.begin());
+
+			for (int i = 0; i < stepCount; i++)
+			{
+				pOutBuffer[i] = intPath.at(i);
+			}
+			cout << "\npath as int array:\n";
+			PrintIntArray(pOutBuffer, nOutBufferSize);
+		}
 		return stepCount;
 	}
 
@@ -441,6 +475,7 @@ private:
 			}
 			current = GetNode(prevPos).value();
 		}
+		std::reverse(path.begin(), path.end());
 		return path;
 	}
 
@@ -456,7 +491,12 @@ void exampleTest()
 	unsigned char pMap[] = {1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1};
 	int pOutBuffer[12];
 	PathFinder pf;
-	pf.FindPath(0, 0, 1, 2, pMap, 4, 3, pOutBuffer, 12);
+	int steps = pf.FindPath(0, 0, 1, 2, pMap, 4, 3, pOutBuffer, 12);
+	//testing if result is correct
+	assert(steps == 3);
+	assert(pOutBuffer[0] == 1);
+	assert(pOutBuffer[1] == 5);
+	assert(pOutBuffer[2] == 9);
 };
 
 void myTest()
