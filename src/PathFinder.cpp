@@ -297,8 +297,8 @@ public:
 					pOutBuffer[i] = intPath.at(i);
 				}
 				//printing for debug
-				cout << "\npath as int array:\n";
-				PrintIntArray(pOutBuffer, nOutBufferSize);
+				//cout << "\npath as int array:\n";
+				//PrintIntArray(pOutBuffer, nOutBufferSize);
 			}
 			return stepCount;
 		}
